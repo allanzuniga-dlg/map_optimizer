@@ -382,6 +382,22 @@
       border-color: rgba(16,185,129,.4);
     }
 
+    /* ─── Version tag ─────────────────────────────────────────────── */
+    .ver-tag {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--border);
+      letter-spacing: .5px;
+      text-align: center;
+      margin-top: 14px;
+      user-select: none;
+    }
+
+    .ver-tag span {
+      color: var(--amber);
+      opacity: .5;
+    }
+
     /* ─── Map screen ──────────────────────────────────────────────── */
     #mapview {
       display: none;
@@ -766,6 +782,8 @@
 
     </div><!-- /fmt-guide -->
 
+    <div class="ver-tag" id="ver-setup"></div>
+
   </div>
 </div>
 
@@ -806,6 +824,8 @@
     </button>
     <input type="file" id="more-file" accept=".json,.geojson" onchange="addMore(this)" />
     <button class="p-btn danger" onclick="clearAll()">🗑 Limpiar puntos</button>
+    <div class="sep" style="margin-top:12px"></div>
+    <div class="ver-tag" id="ver-panel"></div>
   </div>
 
   <div id="tooltip"></div>
@@ -822,6 +842,17 @@
 <!-- deck.gl bundle (incluye GoogleMapsOverlay, ScatterplotLayer, etc.) -->
 <script src="https://unpkg.com/deck.gl@^8.9.0/dist.min.js"></script>
 <script>
+/* ════════════════════════════════════════════════
+   VERSION
+════════════════════════════════════════════════ */
+const VERSION = 'v1.2.0';
+
+document.addEventListener('DOMContentLoaded', () => {
+  const label = `Extroya Map Viewer <span>${VERSION}</span>`;
+  document.getElementById('ver-setup').innerHTML  = label;
+  document.getElementById('ver-panel').innerHTML  = label;
+});
+
 /* ════════════════════════════════════════════════
    STATE
 ════════════════════════════════════════════════ */
