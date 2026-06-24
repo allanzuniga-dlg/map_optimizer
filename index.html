@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extroya · Map Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ─── Tokens ──────────────────────────────────────────────────── */
+    :root {
+      --bg:       #090d12;
+      --s1:       #10171f;
+      --s2:       #171f2b;
+      --s3:       #1e2a38;
+      --border:   #253346;
+      --amber:    #f59e0b;
+      --amber-dim:#7c500a;
+      --sky:      #38bdf8;
+      --green:    #10b981;
+      --red:      #f43f5e;
+      --text:     #dce6f3;
+      --muted:    #5e7a94;
+      --mono:     'JetBrains Mono', monospace;
+      --sans:     'Space Grotesk', system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ─── Setup screen ────────────────────────────────────────────── */
+    #setup {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      background:
+        radial-gradient(ellipse 60% 40% at 50% 0%, rgba(245,158,11,.06) 0%, transparent 70%),
+        var(--bg);
+    }
+
+    .setup-card {
+      width: 100%;
+      max-width: 450px;
+      background: var(--s1);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 42px 38px;
+      box-shadow: 0 0 0 1px rgba(245,158,11,.04), 0 32px 64px rgba(0,0,0,.5);
+    }
+
+    /* Brand */
+    .brand {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .brand-icon {
+      position: relative;
+      width: 56px; height: 56px;
+      margin: 0 auto 16px;
+    }
+
+    .brand-icon svg { width: 56px; height: 56px; }
+
+    .pulse-ring {
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 2px solid var(--amber);
+      opacity: 0;
+      animation: pulse 2.4s ease-out infinite;
+    }
+    .pulse-ring:nth-child(2) { animation-delay: .8s; }
+    .pulse-ring:nth-child(3) { animation-delay: 1.6s; }
+
+    @keyframes pulse {
+      0%   { transform: scale(.6); opacity: .6; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+
+    .brand h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .brand h1 span { color: var(--amber); }
+
+    .brand p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 5px;
+    }
+
+    /* Fields */
+    .field { margin-bottom: 20px; }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .input-row input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 11px 13px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: var(--mono);
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .input-row input:focus {
+      border-color: var(--amber);
+      box-shadow: 0 0 0 3px rgba(245,158,11,.1);
+    }
+
+    .eye-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 0 13px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 15px;
+      transition: color .2s, border-color .2s;
+    }
+
+    .eye-btn:hover { color: var(--amber); border-color: var(--amber-dim); }
+
+    /* Dropzone */
+    .dropzone {
+      position: relative;
+      border: 2px dashed var(--border);
+      border-radius: 11px;
+      padding: 26px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+
+    .dropzone:hover,
+    .dropzone.over {
+      border-color: var(--amber);
+      background: rgba(245,158,11,.03);
+    }
+
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .dz-ico { font-size: 28px; margin-bottom: 9px; }
+    .dz-txt { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .dz-file { font-size: 12px; color: var(--amber); font-weight: 600; margin-top: 7px; font-family: var(--mono); }
+
+    /* Button */
+    .btn-go {
+      width: 100%;
+      padding: 13px;
+      background: var(--amber);
+      border: none;
+      border-radius: 10px;
+      color: #0a0f14;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: var(--sans);
+      letter-spacing: .2px;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .btn-go:hover:not(:disabled) { opacity: .92; }
+    .btn-go:active:not(:disabled) { transform: scale(.99); }
+    .btn-go:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Error */
+    .err-box {
+      margin-top: 12px;
+      padding: 11px 14px;
+      border-radius: 9px;
+      background: rgba(244,63,94,.08);
+      border: 1px solid rgba(244,63,94,.3);
+      font-size: 12px;
+      color: var(--red);
+      display: none;
+      line-height: 1.5;
+    }
+
+    /* ─── Format guide ───────────────────────────────────────────── */
+    .fmt-guide {
+      margin-top: 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .fmt-guide-head {
+      background: var(--s2);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .fmt-guide-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--muted);
+    }
+
+    .fmt-props-note {
+      font-size: 10px;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    /* Coord pills */
+    .fmt-coord-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      padding: 11px 14px;
+      background: var(--s1);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .fmt-coord-item {
+      background: var(--s3);
+      border-radius: 8px;
+      padding: 8px 10px;
+      border-left: 3px solid var(--amber);
+    }
+
+    .fmt-coord-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .fmt-coord-key {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--amber);
+    }
+
+    .fmt-coord-dir {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .fmt-coord-range {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--sky);
+      margin-top: 3px;
+    }
+
+    /* Tabs */
+    .fmt-tabs {
+      display: flex;
+      padding: 9px 14px 0;
+      gap: 3px;
+      background: var(--s1);
+    }
+
+    .fmt-tab {
+      padding: 5px 10px;
+      border-radius: 6px 6px 0 0;
+      border: 1px solid transparent;
+      border-bottom: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      cursor: pointer;
+      transition: color .15s, background .15s;
+      white-space: nowrap;
+    }
+
+    .fmt-tab:hover { color: var(--text); }
+
+    .fmt-tab.active {
+      background: var(--s3);
+      border-color: var(--border);
+      color: var(--amber);
+    }
+
+    /* Code */
+    .fmt-code-wrap {
+      background: var(--s3);
+      border-top: 1px solid var(--border);
+    }
+
+    .fmt-panel { display: none; }
+    .fmt-panel.active { display: block; }
+
+    .fmt-code-block {
+      margin: 0;
+      padding: 12px 15px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      line-height: 1.75;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .jk { color: #7dd3fc; }   /* JSON key   */
+    .jn { color: #6ee7b7; }   /* JSON number */
+    .js { color: #fcd34d; }   /* JSON string value */
+    .jp { color: #475569; }   /* JSON punctuation */
+
+    /* Actions */
+    .fmt-actions {
+      display: flex;
+      gap: 7px;
+      padding: 10px 14px;
+      background: var(--s2);
+      border-top: 1px solid var(--border);
+    }
+
+    .fmt-action-btn {
+      flex: 1;
+      padding: 7px 6px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .fmt-action-btn:hover {
+      background: var(--s3);
+      color: var(--text);
+      border-color: var(--amber-dim);
+    }
+
+    .fmt-action-btn.copied {
+      color: var(--green);
+      border-color: rgba(16,185,129,.4);
+    }
+
+    /* ─── Map screen ──────────────────────────────────────────────── */
+    #mapview {
+      display: none;
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Controls panel */
+    #panel {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 236px;
+      background: rgba(9,13,18,.93);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(245,158,11,.18);
+      border-radius: 14px;
+      padding: 15px;
+      z-index: 999;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    }
+
+    .p-head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--muted);
+      margin-bottom: 13px;
+    }
+
+    .p-head::before {
+      content: '';
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--amber);
+      box-shadow: 0 0 6px var(--amber);
+    }
+
+    /* Stat badge */
+    .stat-badge {
+      background: rgba(245,158,11,.07);
+      border: 1px solid rgba(245,158,11,.2);
+      border-radius: 9px;
+      padding: 10px;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+
+    .stat-n {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--amber);
+      display: block;
+      font-feature-settings: 'tnum';
+      letter-spacing: -1px;
+    }
+
+    .stat-l {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+
+    /* Controls */
+    .ctrl { margin-bottom: 12px; }
+
+    .ctrl-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .ctrl-row span {
+      color: var(--text);
+      font-weight: 600;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--s3);
+      border-radius: 2px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px; height: 14px;
+      background: var(--amber);
+      border-radius: 50%;
+      box-shadow: 0 0 4px rgba(245,158,11,.5);
+    }
+
+    input[type="color"] {
+      width: 100%;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      cursor: pointer;
+      padding: 2px;
+      outline: none;
+    }
+
+    .sep { height: 1px; background: var(--border); margin: 13px 0; }
+
+    /* Panel buttons */
+    .p-btn {
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      margin-bottom: 6px;
+    }
+
+    .p-btn:last-child { margin-bottom: 0; }
+
+    .p-btn:hover {
+      background: rgba(255,255,255,.04);
+    }
+
+    .p-btn.amber {
+      color: var(--amber);
+      border-color: rgba(245,158,11,.3);
+    }
+
+    .p-btn.amber:hover {
+      background: rgba(245,158,11,.06);
+    }
+
+    .p-btn.danger:hover {
+      color: var(--red);
+      border-color: rgba(244,63,94,.4);
+      background: rgba(244,63,94,.05);
+    }
+
+    #more-file { display: none; }
+
+    /* Back button */
+    #back-btn {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(9,13,18,.93);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 8px 15px;
+      color: var(--muted);
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      z-index: 999;
+      transition: color .2s, border-color .2s;
+    }
+
+    #back-btn:hover { color: var(--text); border-color: var(--amber-dim); }
+
+    /* Tooltip */
+    #tooltip {
+      position: absolute;
+      pointer-events: none;
+      display: none;
+      background: rgba(9,13,18,.97);
+      border: 1px solid rgba(245,158,11,.25);
+      border-radius: 9px;
+      padding: 10px 13px;
+      font-size: 12px;
+      line-height: 1.9;
+      max-width: 220px;
+      z-index: 1000;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+
+    #tooltip .tt-coord {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--sky);
+    }
+
+    #tooltip .tt-props {
+      border-top: 1px solid rgba(255,255,255,.07);
+      margin-top: 6px;
+      padding-top: 6px;
+    }
+
+    #tooltip b { color: var(--muted); font-weight: 500; }
+
+    /* Loading overlay */
+    #loading {
+      position: absolute;
+      inset: 0;
+      background: rgba(9,13,18,.88);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .ld-card {
+      background: var(--s1);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 30px 44px;
+      text-align: center;
+    }
+
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--s3);
+      border-top-color: var(--amber);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto 14px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .ld-label { font-size: 14px; color: var(--muted); }
+    .ld-sub { font-size: 11px; color: var(--border); margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ SETUP ═══════════════ -->
+<div id="setup">
+  <div class="setup-card">
+
+    <div class="brand">
+      <div class="brand-icon">
+        <div class="pulse-ring"></div>
+        <div class="pulse-ring"></div>
+        <div class="pulse-ring"></div>
+        <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="56" height="56" rx="14" fill="#1a2030"/>
+          <path d="M28 12C22.477 12 18 16.477 18 22c0 7.5 10 22 10 22s10-14.5 10-22c0-5.523-4.477-10-10-10z"
+                fill="#f59e0b" opacity=".9"/>
+          <circle cx="28" cy="22" r="3.5" fill="#090d12"/>
+        </svg>
+      </div>
+      <h1><span>Extroya</span> Map Viewer</h1>
+      <p>Visualización masiva de puntos · deck.gl + WebGL · sin límite práctico</p>
+    </div>
+
+    <div class="field">
+      <label>Google Maps API Key</label>
+      <div class="input-row">
+        <input id="apikey" type="password" placeholder="AIzaSy…" autocomplete="off"
+               onkeydown="if(event.key==='Enter') startApp()" />
+        <button class="eye-btn" onclick="toggleKey()" title="Mostrar / ocultar">👁</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Archivo de puntos</label>
+      <div class="dropzone" id="dz">
+        <input type="file" id="filein" accept=".json,.geojson" onchange="onFile(this)" />
+        <div class="dz-ico">📂</div>
+        <p class="dz-txt">Arrastra tu JSON aquí, o clic para seleccionar<br>
+          <small>Compatible con .json y .geojson</small></p>
+        <div class="dz-file" id="dz-name"></div>
+      </div>
+    </div>
+
+    <button class="btn-go" id="go-btn" onclick="startApp()">
+      <span>🗺</span><span id="go-lbl">Cargar mapa</span>
+    </button>
+
+    <div class="err-box" id="err-box"></div>
+
+    <!-- Format guide -->
+    <div class="fmt-guide">
+
+      <div class="fmt-guide-head">
+        <span class="fmt-guide-title">📐 Formato del archivo JSON</span>
+        <span class="fmt-props-note">propiedades extra → tooltip al hover</span>
+      </div>
+
+      <!-- What is lat / lng -->
+      <div class="fmt-coord-row">
+        <div class="fmt-coord-item">
+          <div class="fmt-coord-top">
+            <span class="fmt-coord-key">lat</span>
+            <span class="fmt-coord-dir">↕ Norte – Sur</span>
+          </div>
+          <div class="fmt-coord-range">−90° (sur) a 90° (norte)</div>
+        </div>
+        <div class="fmt-coord-item">
+          <div class="fmt-coord-top">
+            <span class="fmt-coord-key">lng</span>
+            <span class="fmt-coord-dir">↔ Este – Oeste</span>
+          </div>
+          <div class="fmt-coord-range">−180° (oeste) a 180° (este)</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="fmt-tabs">
+        <button class="fmt-tab active" onclick="showFmt(0)">lat/lng</button>
+        <button class="fmt-tab"        onclick="showFmt(1)">lat/lon</button>
+        <button class="fmt-tab"        onclick="showFmt(2)">[[lng,lat]]</button>
+        <button class="fmt-tab"        onclick="showFmt(3)">GeoJSON</button>
+      </div>
+
+      <!-- Code panels -->
+      <div class="fmt-code-wrap">
+
+        <div class="fmt-panel active" id="fp-0"><pre class="fmt-code-block"><span class="jp">[</span>
+  <span class="jp">{</span> <span class="jk">"lat"</span><span class="jp">:</span> <span class="jn">9.9281</span><span class="jp">,</span>  <span class="jk">"lng"</span><span class="jp">:</span> <span class="jn">-84.0907</span><span class="jp">,</span> <span class="jk">"nombre"</span><span class="jp">:</span> <span class="js">"Punto A"</span> <span class="jp">},</span>
+  <span class="jp">{</span> <span class="jk">"lat"</span><span class="jp">:</span> <span class="jn">9.9340</span><span class="jp">,</span>  <span class="jk">"lng"</span><span class="jp">:</span> <span class="jn">-84.0850</span><span class="jp">,</span> <span class="jk">"nombre"</span><span class="jp">:</span> <span class="js">"Punto B"</span> <span class="jp">},</span>
+  <span class="jp">{</span> <span class="jk">"lat"</span><span class="jp">:</span> <span class="jn">9.9190</span><span class="jp">,</span>  <span class="jk">"lng"</span><span class="jp">:</span> <span class="jn">-84.1020</span><span class="jp">,</span> <span class="jk">"nombre"</span><span class="jp">:</span> <span class="js">"Punto C"</span> <span class="jp">}</span>
+<span class="jp">]</span></pre></div>
+
+        <div class="fmt-panel" id="fp-1"><pre class="fmt-code-block"><span class="jp">[</span>
+  <span class="jp">{</span> <span class="jk">"latitude"</span><span class="jp">:</span>  <span class="jn">9.9281</span><span class="jp">,</span> <span class="jk">"longitude"</span><span class="jp">:</span> <span class="jn">-84.0907</span><span class="jp">,</span> <span class="jk">"id"</span><span class="jp">:</span> <span class="jn">1</span> <span class="jp">},</span>
+  <span class="jp">{</span> <span class="jk">"latitude"</span><span class="jp">:</span>  <span class="jn">9.9340</span><span class="jp">,</span> <span class="jk">"longitude"</span><span class="jp">:</span> <span class="jn">-84.0850</span><span class="jp">,</span> <span class="jk">"id"</span><span class="jp">:</span> <span class="jn">2</span> <span class="jp">},</span>
+  <span class="jp">{</span> <span class="jk">"latitude"</span><span class="jp">:</span>  <span class="jn">9.9190</span><span class="jp">,</span> <span class="jk">"longitude"</span><span class="jp">:</span> <span class="jn">-84.1020</span><span class="jp">,</span> <span class="jk">"id"</span><span class="jp">:</span> <span class="jn">3</span> <span class="jp">}</span>
+<span class="jp">]</span></pre></div>
+
+        <div class="fmt-panel" id="fp-2"><pre class="fmt-code-block"><span class="jp">// Orden obligatorio: [longitud, latitud]</span>
+<span class="jp">[</span>
+  <span class="jp">[</span><span class="jn">-84.0907</span><span class="jp">,</span> <span class="jn">9.9281</span><span class="jp">],</span>
+  <span class="jp">[</span><span class="jn">-84.0850</span><span class="jp">,</span> <span class="jn">9.9340</span><span class="jp">],</span>
+  <span class="jp">[</span><span class="jn">-84.1020</span><span class="jp">,</span> <span class="jn">9.9190</span><span class="jp">]</span>
+<span class="jp">]</span></pre></div>
+
+        <div class="fmt-panel" id="fp-3"><pre class="fmt-code-block"><span class="jp">{</span>
+  <span class="jk">"type"</span><span class="jp">:</span> <span class="js">"FeatureCollection"</span><span class="jp">,</span>
+  <span class="jk">"features"</span><span class="jp">: [</span>
+    <span class="jp">{</span>
+      <span class="jk">"type"</span><span class="jp">:</span> <span class="js">"Feature"</span><span class="jp">,</span>
+      <span class="jk">"geometry"</span><span class="jp">: {</span> <span class="jk">"type"</span><span class="jp">:</span> <span class="js">"Point"</span><span class="jp">,</span> <span class="jk">"coordinates"</span><span class="jp">: [</span><span class="jn">-84.0907</span><span class="jp">,</span> <span class="jn">9.9281</span><span class="jp">] },</span>
+      <span class="jk">"properties"</span><span class="jp">: {</span> <span class="jk">"nombre"</span><span class="jp">:</span> <span class="js">"Punto A"</span> <span class="jp">}</span>
+    <span class="jp">}</span>
+  <span class="jp">]</span>
+<span class="jp">}</span></pre></div>
+
+      </div><!-- /fmt-code-wrap -->
+
+      <!-- Actions -->
+      <div class="fmt-actions">
+        <button class="fmt-action-btn" id="copy-btn" onclick="copyFmt(this)">📋 Copiar ejemplo</button>
+        <button class="fmt-action-btn" onclick="downloadFmt()">⬇ Descargar muestra</button>
+      </div>
+
+    </div><!-- /fmt-guide -->
+
+  </div>
+</div>
+
+<!-- ═══════════════ MAPA ═══════════════ -->
+<div id="mapview">
+  <div id="map"></div>
+
+  <button id="back-btn" onclick="goBack()">← Inicio</button>
+
+  <div id="panel">
+    <div class="p-head">Controles</div>
+
+    <div class="stat-badge">
+      <span class="stat-n" id="pt-count">0</span>
+      <span class="stat-l">puntos en el mapa</span>
+    </div>
+
+    <div class="ctrl">
+      <div class="ctrl-row">Color de puntos</div>
+      <input type="color" id="col" value="#f59e0b" oninput="refreshLayer()" />
+    </div>
+
+    <div class="ctrl">
+      <div class="ctrl-row">Tamaño <span id="r-lbl">4 px</span></div>
+      <input type="range" id="r-sld" min="1" max="20" value="4" oninput="onR()" />
+    </div>
+
+    <div class="ctrl">
+      <div class="ctrl-row">Opacidad <span id="o-lbl">80 %</span></div>
+      <input type="range" id="o-sld" min="5" max="100" value="80" oninput="onO()" />
+    </div>
+
+    <div class="sep"></div>
+
+    <button class="p-btn amber" onclick="fitBounds()">🎯 Centrar en puntos</button>
+    <button class="p-btn" onclick="document.getElementById('more-file').click()">
+      ➕ Agregar más JSON
+    </button>
+    <input type="file" id="more-file" accept=".json,.geojson" onchange="addMore(this)" />
+    <button class="p-btn danger" onclick="clearAll()">🗑 Limpiar puntos</button>
+  </div>
+
+  <div id="tooltip"></div>
+
+  <div id="loading">
+    <div class="ld-card">
+      <div class="spinner"></div>
+      <div class="ld-label" id="ld-lbl">Procesando puntos…</div>
+      <div class="ld-sub" id="ld-sub">Esto puede tardar unos segundos</div>
+    </div>
+  </div>
+</div>
+
+<!-- deck.gl bundle (incluye GoogleMapsOverlay, ScatterplotLayer, etc.) -->
+<script src="https://unpkg.com/deck.gl@^8.9.0/dist.min.js"></script>
+<script>
+/* ════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════ */
+let MAP = null;
+let OVL = null;
+let PTS = [];       // [{pos:[lng,lat], p:{...props}}]
+let selFile = null;
+
+/* ════════════════════════════════════════════════
+   SETUP HELPERS
+════════════════════════════════════════════════ */
+
+function toggleKey() {
+  const el = document.getElementById('apikey');
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+// ── Drag & drop ──
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('over');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+
+function onFile(inp) { if (inp.files[0]) setFile(inp.files[0]); }
+
+function setFile(f) {
+  selFile = f;
+  const kb = (f.size / 1024).toFixed(1);
+  document.getElementById('dz-name').textContent = `📄 ${f.name}  (${kb} KB)`;
+}
+
+// ── Errors ──
+function showErr(msg) {
+  const b = document.getElementById('err-box');
+  b.textContent = msg;
+  b.style.display = 'block';
+}
+function hideErr() {
+  document.getElementById('err-box').style.display = 'none';
+}
+
+// ── Async helpers ──
+function readFileText(f) {
+  return new Promise((ok, fail) => {
+    const r = new FileReader();
+    r.onload = e => ok(e.target.result);
+    r.onerror = () => fail(new Error('Error leyendo el archivo.'));
+    r.readAsText(f, 'UTF-8');
+  });
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ════════════════════════════════════════════════
+   START APP
+════════════════════════════════════════════════ */
+async function startApp() {
+  hideErr();
+
+  const key = document.getElementById('apikey').value.trim();
+  if (!key)      { showErr('Ingresa tu Google Maps API Key.'); return; }
+  if (!selFile)  { showErr('Selecciona un archivo JSON.'); return; }
+
+  const btn = document.getElementById('go-btn');
+  const lbl = document.getElementById('go-lbl');
+  btn.disabled = true;
+  lbl.textContent = 'Cargando…';
+
+  try {
+    // 1. Read file
+    const text = await readFileText(selFile);
+
+    // 2. Parse JSON
+    let json;
+    try { json = JSON.parse(text); }
+    catch(e) { throw new Error('Archivo JSON inválido: ' + e.message); }
+
+    // 3. Extract points
+    const pts = parsePoints(json);
+    if (!pts || pts.length === 0) {
+      throw new Error('No se encontraron puntos válidos. Revisa el formato del archivo.');
+    }
+    PTS = pts;
+
+    // 4. Load Google Maps API
+    await loadGoogleMapsAPI(key);
+
+    // 5. Switch screens
+    document.getElementById('setup').style.display = 'none';
+    document.getElementById('mapview').style.display = 'block';
+
+    // 6. Init map + overlay
+    initMap();
+
+    // 7. Render layer
+    buildLayer();
+
+    // 8. Fit bounds
+    setTimeout(fitBounds, 800);
+
+  } catch(e) {
+    showErr(e.message);
+  } finally {
+    btn.disabled = false;
+    lbl.textContent = 'Cargar mapa';
+  }
+}
+
+/* ════════════════════════════════════════════════
+   JSON AUTO-PARSER
+   Soporta:
+   • GeoJSON FeatureCollection / Feature
+   • [{lat, lng}]  [{latitude, longitude}]  [{lat, lon}]
+   • [[lng, lat], ...]
+   • Contenedores: data / points / items / rows / results / locations
+════════════════════════════════════════════════ */
+
+function findKey(obj, candidates) {
+  for (const k of candidates) {
+    if (k in obj && obj[k] != null && obj[k] !== '') return k;
+  }
+  return null;
+}
+
+function validCoord(lng, lat) {
+  return (
+    typeof lng === 'number' && typeof lat === 'number' &&
+    isFinite(lng) && isFinite(lat) &&
+    lat >= -90 && lat <= 90 &&
+    lng >= -180 && lng <= 180
+  );
+}
+
+function parsePoints(raw) {
+  // ── GeoJSON FeatureCollection ──
+  if (raw?.type === 'FeatureCollection' && Array.isArray(raw.features)) {
+    return raw.features
+      .filter(f => f?.geometry?.type === 'Point' && Array.isArray(f.geometry.coordinates))
+      .map(f => ({
+        pos: [f.geometry.coordinates[0], f.geometry.coordinates[1]],
+        p: f.properties || {}
+      }))
+      .filter(d => validCoord(d.pos[0], d.pos[1]));
+  }
+
+  // ── GeoJSON single Feature ──
+  if (raw?.type === 'Feature' && raw.geometry?.type === 'Point') {
+    const [lng, lat] = raw.geometry.coordinates;
+    return validCoord(lng, lat) ? [{ pos: [lng, lat], p: raw.properties || {} }] : [];
+  }
+
+  // ── Find array ──
+  let arr = Array.isArray(raw) ? raw : null;
+  if (!arr) {
+    const CONTAINERS = ['data','points','features','items','results','locations','markers','rows','list','records'];
+    for (const k of CONTAINERS) {
+      if (Array.isArray(raw?.[k]) && raw[k].length > 0) { arr = raw[k]; break; }
+    }
+  }
+  if (!arr || arr.length === 0) return null;
+
+  const first = arr[0];
+
+  // ── Array of arrays [[lng,lat],...] ──
+  if (Array.isArray(first)) {
+    return arr
+      .filter(p => Array.isArray(p) && p.length >= 2)
+      .map(p => ({ pos: [Number(p[0]), Number(p[1])], p: {} }))
+      .filter(d => validCoord(d.pos[0], d.pos[1]));
+  }
+
+  // ── Array of objects ──
+  if (typeof first === 'object' && first !== null) {
+    const latK = findKey(first, ['lat','latitude','Lat','Latitude','LAT','lt']);
+    const lngK = findKey(first, ['lng','lon','longitude','Lng','Lon','Longitude','LNG','LON','long','Long','ln']);
+
+    if (latK && lngK) {
+      return arr
+        .map(p => ({ pos: [Number(p[lngK]), Number(p[latK])], p }))
+        .filter(d => validCoord(d.pos[0], d.pos[1]));
+    }
+
+    // x / y fallback
+    const xK = findKey(first, ['x','X','lng_x']);
+    const yK = findKey(first, ['y','Y','lat_y']);
+    if (xK && yK) {
+      return arr
+        .map(p => ({ pos: [Number(p[xK]), Number(p[yK])], p }))
+        .filter(d => validCoord(d.pos[0], d.pos[1]));
+    }
+  }
+
+  return null;
+}
+
+/* ════════════════════════════════════════════════
+   GOOGLE MAPS
+════════════════════════════════════════════════ */
+function loadGoogleMapsAPI(key) {
+  return new Promise((ok, fail) => {
+    if (window.google?.maps) { ok(); return; }
+    const s = document.createElement('script');
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}`;
+    s.async = true;
+    s.onload = ok;
+    s.onerror = () => fail(new Error('No se pudo cargar Google Maps. Verifica que tu API Key sea válida y tenga habilitada la Maps JavaScript API.'));
+    document.head.appendChild(s);
+  });
+}
+
+function initMap() {
+  if (!deck?.GoogleMapsOverlay) {
+    alert('Error: deck.GoogleMapsOverlay no encontrado. Verifica tu conexión a internet (se necesita cargar unpkg.com).');
+    return;
+  }
+
+  MAP = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 0, lng: 0 },
+    zoom: 2,
+    mapTypeId: 'roadmap',
+    disableDefaultUI: false,
+    zoomControl: true,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: true,
+    // Estilo oscuro personalizado
+    styles: [
+      { elementType: 'geometry',            stylers: [{ color: '#121c28' }] },
+      { elementType: 'labels.text.fill',    stylers: [{ color: '#5e7a94' }] },
+      { elementType: 'labels.text.stroke',  stylers: [{ color: '#0a0f16' }] },
+      { featureType: 'road', elementType: 'geometry',        stylers: [{ color: '#1e2d3e' }] },
+      { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#090d12' }] },
+      { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#253346' }] },
+      { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#3d5a73' }] },
+      { featureType: 'water', elementType: 'geometry',    stylers: [{ color: '#0a1520' }] },
+      { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#1a3a52' }] },
+      { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#0e1a26' }] },
+      { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+      { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+      { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#1e2d3e' }] },
+      { featureType: 'administrative', elementType: 'labels.text.fill', stylers: [{ color: '#3d5a73' }] },
+    ]
+  });
+
+  // Crear overlay deck.gl — UN SOLO objeto que vive durante toda la sesión
+  OVL = new deck.GoogleMapsOverlay({
+    layers: [],
+    pickingRadius: 6          // radio de detección en píxeles para hover/click
+  });
+  OVL.setMap(MAP);
+}
+
+/* ════════════════════════════════════════════════
+   DECK.GL LAYER
+   
+   CLAVE DE PERFORMANCE:
+   • id:'pts' fijo → deck.gl compara la capa con la anterior;
+     si `data` es el mismo array (misma referencia), NO re-sube
+     la geometría a la GPU. Solo actualiza color/radio.
+   • radiusUnits:'pixels' → tamaño fijo en pantalla, sin escala por zoom.
+   • stroked:false → sin borde = ~2× más rápido con muchos puntos.
+   • getFillColor como array constante → accessor más barato que función.
+════════════════════════════════════════════════ */
+
+function hexToRgb(hex) {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return m
+    ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)]
+    : [245, 158, 11];
+}
+
+function buildLayer() {
+  if (!OVL) return;
+
+  const rgb = hexToRgb(document.getElementById('col').value);
+  const r   = parseInt(document.getElementById('r-sld').value, 10);
+  const a   = Math.round(parseInt(document.getElementById('o-sld').value, 10) * 2.55);
+
+  const layer = new deck.ScatterplotLayer({
+    id: 'pts',                          // mismo id siempre → deck.gl hace diff de props
+    data: PTS,                          // misma referencia si no agregamos puntos → no re-upload GPU
+    getPosition: d => d.pos,
+    radiusUnits: 'pixels',              // tamaño siempre en píxeles, independiente del zoom
+    getRadius: r,
+    getFillColor: [...rgb, a],          // array constante = más eficiente que función
+    stroked: false,                     // sin borde = renderizado más rápido
+    pickable: true,
+    autoHighlight: true,
+    highlightColor: [255, 255, 255, 60],
+    onHover: ({ object, x, y }) => {
+      const tt = document.getElementById('tooltip');
+      if (!object) {
+        tt.style.display = 'none';
+        return;
+      }
+
+      const [lng, lat] = object.pos;
+      const props = object.p || {};
+      const keys  = Object.keys(props).slice(0, 10);
+
+      let html = `<div style="color:var(--amber);font-weight:700;margin-bottom:5px;font-size:12px">📍 Punto</div>`;
+      html += `<div class="tt-coord">${lat.toFixed(7)}, ${lng.toFixed(7)}</div>`;
+
+      if (keys.length > 0) {
+        html += '<div class="tt-props">';
+        for (const k of keys) {
+          const v = props[k];
+          if (v != null && v !== '') {
+            html += `<div><b>${k}:</b> ${String(v).slice(0, 60)}</div>`;
+          }
+        }
+        html += '</div>';
+      }
+
+      // Posicionar tooltip
+      const mapEl = document.getElementById('mapview');
+      const maxX  = mapEl.clientWidth  - 240;
+      const maxY  = mapEl.clientHeight - 160;
+      tt.innerHTML = html;
+      tt.style.display = 'block';
+      tt.style.left    = Math.min(x + 14, maxX) + 'px';
+      tt.style.top     = Math.min(Math.max(y - 10, 0), maxY) + 'px';
+    }
+  });
+
+  // setProps hace diff: solo sube datos nuevos a GPU si PTS cambió de referencia
+  OVL.setProps({ layers: [layer] });
+
+  // Animación de conteo
+  animateCount(PTS.length);
+}
+
+// Anima el número del badge de 0 al total
+function animateCount(target) {
+  const el = document.getElementById('pt-count');
+  const start = parseInt(el.textContent.replace(/\D/g, '') || '0', 10);
+  const dur = Math.min(600, target / 100);
+  const step = Math.ceil((target - start) / 30);
+  let cur = start;
+  const tick = () => {
+    cur = Math.min(cur + step, target);
+    el.textContent = cur.toLocaleString('es-CR');
+    if (cur < target) requestAnimationFrame(tick);
+    else el.textContent = target.toLocaleString('es-CR');
+  };
+  requestAnimationFrame(tick);
+}
+
+function refreshLayer() { buildLayer(); }
+function onR() {
+  document.getElementById('r-lbl').textContent = document.getElementById('r-sld').value + ' px';
+  buildLayer();
+}
+function onO() {
+  document.getElementById('o-lbl').textContent = document.getElementById('o-sld').value + ' %';
+  buildLayer();
+}
+
+/* ════════════════════════════════════════════════
+   FIT BOUNDS
+════════════════════════════════════════════════ */
+function fitBounds() {
+  if (!MAP || PTS.length === 0) return;
+  const bounds = new google.maps.LatLngBounds();
+  // Muestreo si hay muchísimos puntos para no calcular bounds de 200k en JS
+  const sample = PTS.length > 50000
+    ? PTS.filter((_, i) => i % Math.floor(PTS.length / 50000) === 0)
+    : PTS;
+  for (const p of sample) {
+    bounds.extend({ lat: p.pos[1], lng: p.pos[0] });
+  }
+  MAP.fitBounds(bounds);
+}
+
+/* ════════════════════════════════════════════════
+   AGREGAR MÁS JSON (acumulativo, sin re-subir los anteriores)
+════════════════════════════════════════════════ */
+async function addMore(inp) {
+  const f = inp.files[0];
+  if (!f) return;
+
+  showLoad('Agregando puntos…', f.name);
+  await sleep(60);   // dar tiempo al navegador para renderizar el spinner
+
+  try {
+    const text = await readFileText(f);
+    const json = JSON.parse(text);
+    const newPts = parsePoints(json);
+    if (!newPts || newPts.length === 0) throw new Error('No se encontraron puntos válidos.');
+
+    // Nueva referencia de array → deck.gl re-sube a GPU UNA VEZ
+    PTS = [...PTS, ...newPts];
+    buildLayer();
+
+  } catch(e) {
+    alert('Error al cargar el archivo: ' + e.message);
+  } finally {
+    hideLoad();
+    inp.value = '';
+  }
+}
+
+/* ════════════════════════════════════════════════
+   LIMPIAR
+════════════════════════════════════════════════ */
+function clearAll() {
+  if (!confirm(`¿Eliminar los ${PTS.length.toLocaleString('es-CR')} puntos del mapa?`)) return;
+  PTS = [];
+  buildLayer();
+}
+
+/* ════════════════════════════════════════════════
+   VOLVER AL INICIO
+════════════════════════════════════════════════ */
+function goBack() {
+  if (!confirm('¿Volver al inicio? Los puntos cargados se perderán.')) return;
+  document.getElementById('mapview').style.display = 'none';
+  document.getElementById('setup').style.display = 'flex';
+  if (OVL) { OVL.setMap(null); OVL = null; }
+  MAP = null;
+  PTS = [];
+  selFile = null;
+  document.getElementById('dz-name').textContent = '';
+  document.getElementById('pt-count').textContent = '0';
+  hideErr();
+}
+
+
+/* ════════════════════════════════════════════════
+   FORMAT GUIDE
+════════════════════════════════════════════════ */
+const FMT_EXAMPLES = [
+  // 0 – lat/lng
+`[
+  { "lat": 9.9281, "lng": -84.0907, "nombre": "Punto A", "valor": 42 },
+  { "lat": 9.9340, "lng": -84.0850, "nombre": "Punto B", "valor": 87 },
+  { "lat": 9.9190, "lng": -84.1020, "nombre": "Punto C", "valor": 13 },
+  { "lat": 9.9450, "lng": -84.0780, "nombre": "Punto D", "valor": 65 },
+  { "lat": 9.9100, "lng": -84.0600, "nombre": "Punto E", "valor": 29 }
+]`,
+  // 1 – latitude/longitude
+`[
+  { "latitude": 9.9281, "longitude": -84.0907, "id": 1 },
+  { "latitude": 9.9340, "longitude": -84.0850, "id": 2 },
+  { "latitude": 9.9190, "longitude": -84.1020, "id": 3 },
+  { "latitude": 9.9450, "longitude": -84.0780, "id": 4 }
+]`,
+  // 2 – [[lng, lat]]
+`[
+  [-84.0907, 9.9281],
+  [-84.0850, 9.9340],
+  [-84.1020, 9.9190],
+  [-84.0780, 9.9450],
+  [-84.0600, 9.9100]
+]`,
+  // 3 – GeoJSON
+`{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-84.0907, 9.9281] },
+      "properties": { "nombre": "Punto A", "valor": 42 }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-84.0850, 9.9340] },
+      "properties": { "nombre": "Punto B", "valor": 87 }
+    }
+  ]
+}`
+];
+
+const FMT_NAMES = [
+  'ejemplo-lat-lng.json',
+  'ejemplo-latitude-longitude.json',
+  'ejemplo-array-lng-lat.json',
+  'ejemplo-geojson.geojson'
+];
+
+let curFmt = 0;
+
+function showFmt(idx) {
+  curFmt = idx;
+  document.querySelectorAll('.fmt-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  document.querySelectorAll('.fmt-panel').forEach((p, i) => p.classList.toggle('active', i === idx));
+}
+
+function copyFmt(btn) {
+  navigator.clipboard.writeText(FMT_EXAMPLES[curFmt]).then(() => {
+    btn.textContent = '✓ Copiado';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '📋 Copiar ejemplo';
+      btn.classList.remove('copied');
+    }, 1800);
+  }).catch(() => {
+    // Fallback for environments where clipboard API is blocked
+    const ta = document.createElement('textarea');
+    ta.value = FMT_EXAMPLES[curFmt];
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = '✓ Copiado';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 Copiar ejemplo'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+
+function downloadFmt() {
+  const blob = new Blob([FMT_EXAMPLES[curFmt]], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = FMT_NAMES[curFmt];
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+  document.getElementById('ld-lbl').textContent = label;
+  document.getElementById('ld-sub').textContent = sub;
+  document.getElementById('loading').style.display = 'flex';
+}
+function hideLoad() {
+  document.getElementById('loading').style.display = 'none';
+}
+</script>
+</body>
+</html>
