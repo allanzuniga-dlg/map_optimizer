@@ -1338,10 +1338,15 @@ function downloadFmt() {
   const blob = new Blob([FMT_EXAMPLES[curFmt]], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href = url; a.download = FMT_NAMES[curFmt];
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  a.href = url;
+  a.download = FMT_NAMES[curFmt];
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 2000);
 }
 
   document.getElementById('ld-lbl').textContent = label;
